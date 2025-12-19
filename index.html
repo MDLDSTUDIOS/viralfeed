@@ -3,533 +3,654 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VideoVibe</title>
+    <title>ClipFlow</title>
     <style>
+        :root {
+            --primary: #8a2be2;
+            --secondary: #00f2ea;
+            --bg-dark: #050505;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            overflow: hidden;
             background: #000;
-            width: 100vw;
-            height: 100vh;
-            position: fixed;
+            color: white;
+            overflow: hidden;
         }
 
-        .container {
+        #app-container {
             width: 100%;
+            max-width: 450px;
             height: 100vh;
-            overflow-y: scroll;
-            scroll-snap-type: y mandatory;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-
-        .container::-webkit-scrollbar {
-            display: none;
-        }
-
-        .video-wrapper {
-            width: 100%;
-            height: 100vh;
-            scroll-snap-align: start;
+            margin: 0 auto;
             position: relative;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #auth-screen {
+            position: absolute;
+            inset: 0;
+            z-index: 5000;
+            background: linear-gradient(135deg, #000 0%, #2e004d 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #1a0033 0%, #000 100%);
+            padding: 40px;
         }
 
-        .video-wrapper video {
+        #auth-screen.hidden {
+            display: none;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+
+        .login-card h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+
+        .login-card p {
+            color: #999;
+            margin-bottom: 30px;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 16px 20px;
+            margin-bottom: 15px;
+            border-radius: 16px;
+            border: 2px solid rgba(138, 43, 226, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .login-card input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
+        }
+
+        #feed {
+            flex: 1;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #feed::-webkit-scrollbar {
+            display: none;
+        }
+
+        #feed.hidden {
+            display: none;
+        }
+
+        .video-player {
+            width: 100%;
+            height: 100vh;
+            snap-align: start;
+            snap-stop: always;
+            position: relative;
+            background: #000;
+        }
+
+        .video-player video {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
 
-        .empty-state {
-            width: 100%;
+        #empty-state {
             height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #2d0052 0%, #000000 100%);
-            padding: 2rem;
-            animation: fadeIn 0.8s ease-out;
+            text-align: center;
+            padding: 40px;
+            background: radial-gradient(circle at center, #1a0b2e 0%, #050505 100%);
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        #empty-state.hidden {
+            display: none;
         }
 
         .empty-icon {
-            width: 120px;
-            height: 120px;
-            background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 2rem;
-            animation: pulse 2s ease-in-out infinite;
+            font-size: 110px;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 25px var(--primary));
+            animation: floating 3s ease-in-out infinite;
         }
 
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 0 0 20px rgba(139, 92, 246, 0);
-            }
+        @keyframes floating {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
         }
 
-        .empty-icon svg {
-            width: 60px;
-            height: 60px;
-            fill: white;
-        }
-
-        .empty-title {
+        .empty-state h2 {
             font-size: 2rem;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 1rem;
-            text-align: center;
-            background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
+            margin-bottom: 15px;
+            font-weight: 700;
         }
 
-        .empty-subtitle {
-            font-size: 1.1rem;
-            color: #a0a0a0;
-            text-align: center;
-            max-width: 400px;
+        .empty-state p {
+            color: #999;
+            margin: 15px 0 30px;
             line-height: 1.6;
         }
 
-        .upload-btn {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            width: 65px;
-            height: 65px;
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
+        .ui-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
             display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 20px;
+            background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, transparent 50%);
+        }
+
+        .side-bar {
+            position: absolute;
+            right: 15px;
+            bottom: 120px;
+            display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.4);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
+            gap: 22px;
+            pointer-events: auto;
         }
 
-        .upload-btn:hover {
-            transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 12px 48px rgba(139, 92, 246, 0.6);
+        .profile-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 3px solid white;
+            overflow: hidden;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
         }
 
-        .upload-btn:active {
-            transform: scale(0.95) rotate(90deg);
-        }
-
-        .upload-btn svg {
-            width: 28px;
-            height: 28px;
-            fill: white;
-        }
-
-        .upload-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
+        .profile-btn img {
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            animation: fadeIn 0.3s ease-out;
+            object-fit: cover;
         }
 
-        .upload-modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: linear-gradient(135deg, #1a0033 0%, #0f0f0f 100%);
-            border-radius: 24px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(139, 92, 246, 0.2);
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(100px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .modal-header {
-            font-size: 1.5rem;
-            font-weight: 700;
+        .action-btn {
+            background: none;
+            border: none;
             color: white;
-            margin-bottom: 1.5rem;
+            cursor: pointer;
             text-align: center;
         }
 
-        .modal-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
+        .action-btn .icon {
+            font-size: 32px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
         }
 
-        .modal-btn {
-            padding: 1rem 1.5rem;
-            border: none;
-            border-radius: 16px;
-            font-size: 1rem;
+        .action-btn span {
+            display: block;
+            font-size: 13px;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .modal-btn-primary {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            color: white;
-        }
-
-        .modal-btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
-        }
-
-        .modal-btn-secondary {
-            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-            color: white;
-        }
-
-        .modal-btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(6, 182, 212, 0.4);
-        }
-
-        .modal-btn-cancel {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .modal-btn-cancel:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: translateY(-2px);
-        }
-
-        input[type="file"] {
-            display: none;
+            margin-top: 6px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
         }
 
         .video-info {
-            position: absolute;
-            bottom: 6rem;
-            left: 1.5rem;
-            right: 1.5rem;
+            pointer-events: auto;
+            margin-bottom: 80px;
+            max-width: 75%;
+        }
+
+        .video-info h4 {
             color: white;
-            z-index: 10;
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .video-title {
-            font-size: 1.2rem;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
             font-weight: 600;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
         }
 
-        .video-description {
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.8);
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        .video-info p {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+            font-size: 0.95rem;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
         }
 
-        .loading {
-            position: fixed;
+        .heart-pop {
+            position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(139, 92, 246, 0.2);
-            border-top-color: #8b5cf6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+            font-size: 120px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @keyframes pop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.4); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        #upload-modal {
+            position: absolute;
+            inset: 0;
+            background: #000;
+            z-index: 4000;
             display: none;
-            z-index: 3000;
+            flex-direction: column;
+            padding: 20px;
         }
 
-        .loading.active {
-            display: block;
+        #upload-modal.active {
+            display: flex;
         }
 
-        @keyframes spin {
-            to {
-                transform: translate(-50%, -50%) rotate(360deg);
-            }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
         }
 
-        @media (max-width: 768px) {
-            .empty-title {
-                font-size: 1.5rem;
-            }
+        .modal-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
 
-            .empty-subtitle {
-                font-size: 1rem;
-            }
+        .modal-close {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            font-size: 28px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
 
-            .upload-btn {
-                width: 60px;
-                height: 60px;
-                bottom: 1.5rem;
-                right: 1.5rem;
-            }
+        #recorder-preview {
+            width: 100%;
+            height: 60%;
+            background: #111;
+            border-radius: 20px;
+            object-fit: cover;
+            transform: scaleX(-1);
+            border: 3px solid rgba(138, 43, 226, 0.3);
+        }
 
-            .modal-content {
-                padding: 1.5rem;
-            }
+        .recorder-controls {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .rec-circle {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            border: 5px solid white;
+            background: linear-gradient(135deg, #ff0844, #ff4444);
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(255, 8, 68, 0.5);
+        }
+
+        .rec-circle.recording {
+            border-radius: 15px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        #post-actions {
+            display: none;
+            width: 100%;
+            gap: 15px;
+        }
+
+        #post-actions.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #post-actions input {
+            width: 100%;
+            padding: 16px 20px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(138, 43, 226, 0.3);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
+        }
+
+        nav {
+            height: 75px;
+            background: rgba(0, 0, 0, 0.95);
+            border-top: 1px solid #222;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .nav-btn {
+            cursor: pointer;
+            font-size: 28px;
+            padding: 10px;
+        }
+
+        .upload-center {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            width: 55px;
+            height: 36px;
+            border-radius: 12px;
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.6rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.5);
+        }
+
+        .beta-text {
+            opacity: 0.4;
+            font-size: 11px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="container" id="videoContainer"></div>
-
-    <button class="upload-btn" id="uploadBtn" aria-label="Subir video">
-        <svg viewBox="0 0 24 24">
-            <path d="M12 5v14m7-7H5"/>
-        </svg>
-    </button>
-
-    <div class="upload-modal" id="uploadModal">
-        <div class="modal-content">
-            <h2 class="modal-header">Agregar Video</h2>
-            <div class="modal-buttons">
-                <button class="modal-btn modal-btn-primary" id="selectFileBtn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m14-7l-5-5-5 5m5-5v12"/>
-                    </svg>
-                    Seleccionar Archivo
-                </button>
-                <button class="modal-btn modal-btn-secondary" id="recordBtn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                        <circle cx="12" cy="12" r="10"/>
-                    </svg>
-                    Grabar Video
-                </button>
-                <button class="modal-btn modal-btn-cancel" id="cancelBtn">Cancelar</button>
+    <div id="app-container">
+        <div id="auth-screen">
+            <div class="login-card">
+                <h1>ClipFlow</h1>
+                <p>Crea, comparte y descubre videos increíbles</p>
+                <input type="text" id="login-user" placeholder="Tu nombre de usuario">
+                <button class="btn-primary" style="width:100%" onclick="handleLogin()">Comenzar</button>
+                <p class="beta-text">VERSION BETA V1.0</p>
             </div>
         </div>
+
+        <main id="feed" class="hidden"></main>
+
+        <div id="empty-state" class="hidden">
+            <div class="empty-icon">🎬</div>
+            <h2>Sé el primero en brillar</h2>
+            <p>El feed está esperando tu talento. Graba tu primer video y comparte tu creatividad.</p>
+            <button class="btn-primary" onclick="openModal()">🎥 Crear Video</button>
+            <p class="beta-text">PROTOTIPO EN DESARROLLO</p>
+        </div>
+
+        <div id="upload-modal">
+            <div class="modal-header">
+                <h3>📹 Crear Video</h3>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <video id="recorder-preview" autoplay muted playsinline></video>
+            <div class="recorder-controls">
+                <div id="rec-btn" class="rec-circle" onclick="toggleRecording()"></div>
+                <div id="post-actions">
+                    <input type="text" id="video-desc" placeholder="Describe tu video...">
+                    <button class="btn-primary" style="width:100%" onclick="publishVideo()">🚀 Publicar Video</button>
+                </div>
+            </div>
+        </div>
+
+        <nav>
+            <div class="nav-btn" onclick="scrollToTop()">🏠</div>
+            <div onclick="openModal()">
+                <div class="upload-center">+</div>
+            </div>
+            <div class="nav-btn">👤</div>
+        </nav>
     </div>
 
-    <div class="loading" id="loading"></div>
-
-    <input type="file" id="fileInput" accept="video/*" capture="environment">
-
     <script>
+        let currentUser = "Invitado";
+        let mediaRecorder;
+        let recordedChunks = [];
+        let stream;
+
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        function playSound(frequency, duration) {
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            
-            oscillator.start(audioCtx.currentTime);
-            oscillator.stop(audioCtx.currentTime + duration);
+
+        function playSound(freq, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + duration);
         }
 
-        let videos = [];
-        let currentVideoIndex = 0;
-
-        const container = document.getElementById('videoContainer');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const uploadModal = document.getElementById('uploadModal');
-        const selectFileBtn = document.getElementById('selectFileBtn');
-        const recordBtn = document.getElementById('recordBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const fileInput = document.getElementById('fileInput');
-        const loading = document.getElementById('loading');
-
-        function showEmptyState() {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M23 7l-7 5 7 5V7z"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                        </svg>
-                    </div>
-                    <h1 class="empty-title">¡Comienza tu Historia!</h1>
-                    <p class="empty-subtitle">Sube tu primer video y comparte momentos increíbles con el mundo</p>
-                </div>
-            `;
+        function handleLogin() {
+            const user = document.getElementById('login-user').value;
+            if (user.trim()) {
+                currentUser = user.trim();
+                playSound(800, 0.2);
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('empty-state').classList.remove('hidden');
+            }
         }
 
-        function createVideoElement(videoData) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'video-wrapper';
-            
-            const video = document.createElement('video');
-            video.src = videoData.url;
-            video.loop = true;
-            video.playsInline = true;
-            video.preload = 'metadata';
-            
-            const info = document.createElement('div');
-            info.className = 'video-info';
-            info.innerHTML = `
-                <div class="video-title">${videoData.title}</div>
-                <div class="video-description">${videoData.description}</div>
-            `;
-            
-            wrapper.appendChild(video);
-            wrapper.appendChild(info);
-            
-            return wrapper;
+        async function openModal() {
+            playSound(600, 0.1);
+            document.getElementById('upload-modal').classList.add('active');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user' },
+                    audio: true
+                });
+                document.getElementById('recorder-preview').srcObject = stream;
+            } catch (err) {
+                alert("No se pudo acceder a la cámara");
+                closeModal();
+            }
         }
 
-        function renderVideos() {
-            container.innerHTML = '';
-            
-            if (videos.length === 0) {
-                showEmptyState();
+        function closeModal() {
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+            document.getElementById('upload-modal').classList.remove('active');
+            document.getElementById('post-actions').classList.remove('active');
+            document.getElementById('rec-btn').style.display = 'block';
+            document.getElementById('rec-btn').classList.remove('recording');
+            document.getElementById('video-desc').value = '';
+        }
+
+        function toggleRecording() {
+            const btn = document.getElementById('rec-btn');
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                btn.classList.remove('recording');
+                playSound(600, 0.1);
+            } else {
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+                mediaRecorder.onstop = () => {
+                    document.getElementById('post-actions').classList.add('active');
+                    btn.style.display = 'none';
+                };
+                mediaRecorder.start();
+                btn.classList.add('recording');
+                playSound(1000, 0.1);
+            }
+        }
+
+        function publishVideo() {
+            if (recordedChunks.length === 0) {
+                alert("No hay video grabado");
                 return;
             }
-            
-            videos.forEach(videoData => {
-                const videoElement = createVideoElement(videoData);
-                container.appendChild(videoElement);
-            });
-            
-            updateVideoPlayback();
-        }
 
-        function updateVideoPlayback() {
-            const allVideos = container.querySelectorAll('video');
-            const containerRect = container.getBoundingClientRect();
-            
-            allVideos.forEach((video, index) => {
-                const rect = video.getBoundingClientRect();
-                const isVisible = rect.top >= 0 && rect.top < window.innerHeight * 0.5;
-                
-                if (isVisible && currentVideoIndex !== index) {
-                    currentVideoIndex = index;
-                    playSound(600, 0.1);
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const desc = document.getElementById('video-desc').value || "¡Nuevo clip en ClipFlow! ✨";
+
+            const post = document.createElement('div');
+            post.className = 'video-player';
+            post.innerHTML = `
+                <video src="${url}" loop playsinline></video>
+                <div class="heart-pop">❤️</div>
+                <div class="ui-overlay">
+                    <div class="side-bar">
+                        <div class="profile-btn"><img src="https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser)}&background=8a2be2&color=fff&bold=true"></div>
+                        <button class="action-btn" onclick="toggleLike(this)">
+                            <div class="icon">🤍</div>
+                            <span class="l-count">0</span>
+                        </button>
+                        <button class="action-btn">
+                            <div class="icon">💬</div>
+                            <span>0</span>
+                        </button>
+                        <button class="action-btn">
+                            <div class="icon">✈️</div>
+                            <span>Share</span>
+                        </button>
+                    </div>
+                    <div class="video-info">
+                        <h4>@${currentUser.toLowerCase().replace(/\s+/g, '_')}</h4>
+                        <p>${desc}</p>
+                    </div>
+                </div>
+            `;
+
+            post.addEventListener('dblclick', function(e) {
+                if (e.target.tagName !== 'BUTTON') {
+                    toggleLike(this.querySelector('.action-btn'), true);
                 }
-                
-                if (isVisible) {
-                    video.play().catch(() => {});
-                } else {
-                    video.pause();
-                }
             });
-        }
 
-        container.addEventListener('scroll', () => {
-            updateVideoPlayback();
-        });
+            const feed = document.getElementById('feed');
+            feed.prepend(post);
+            feed.classList.remove('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
 
-        uploadBtn.addEventListener('click', () => {
-            uploadModal.classList.add('active');
-            playSound(800, 0.1);
-        });
+            playSound(1200, 0.2);
+            closeModal();
+            initObserver();
 
-        cancelBtn.addEventListener('click', () => {
-            uploadModal.classList.remove('active');
-            playSound(400, 0.1);
-        });
-
-        selectFileBtn.addEventListener('click', () => {
-            fileInput.click();
-        });
-
-        recordBtn.addEventListener('click', () => {
-            fileInput.setAttribute('capture', 'environment');
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            loading.classList.add('active');
-            uploadModal.classList.remove('active');
-            
-            const url = URL.createObjectURL(file);
-            
             setTimeout(() => {
-                videos.push({
-                    url: url,
-                    title: `Video ${videos.length + 1}`,
-                    description: 'Compartido con VideoVibe'
-                });
-                
-                renderVideos();
-                loading.classList.remove('active');
-                playSound(1000, 0.2);
-                
-                setTimeout(() => {
-                    const lastVideo = container.querySelectorAll('.video-wrapper')[videos.length - 1];
-                    lastVideo.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-            }, 800);
-            
-            fileInput.value = '';
-        });
+                feed.scrollTop = 0;
+            }, 100);
+        }
 
-        uploadModal.addEventListener('click', (e) => {
-            if (e.target === uploadModal) {
-                uploadModal.classList.remove('active');
-                playSound(400, 0.1);
+        function toggleLike(btn, force = false) {
+            const icon = btn.querySelector('.icon');
+            const count = btn.querySelector('.l-count');
+            const heart = btn.closest('.video-player').querySelector('.heart-pop');
+
+            if (icon.innerText === "🤍" || force) {
+                if (icon.innerText === "🤍") {
+                    count.innerText = parseInt(count.innerText) + 1;
+                }
+                icon.innerText = "❤️";
+                icon.style.color = "var(--secondary)";
+                playSound(800, 0.1);
+                heart.style.animation = 'none';
+                heart.offsetHeight;
+                heart.style.animation = 'pop 0.8s ease-out';
+            } else {
+                icon.innerText = "🤍";
+                icon.style.color = "white";
+                count.innerText = Math.max(0, parseInt(count.innerText) - 1);
+            }
+        }
+
+        function scrollToTop() {
+            playSound(600, 0.1);
+            const feed = document.getElementById('feed');
+            feed.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function initObserver() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const video = entry.target.querySelector('video');
+                    if (video) {
+                        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                            video.play().catch(() => {});
+                        } else {
+                            video.pause();
+                        }
+                    }
+                });
+            }, { threshold: [0, 0.6, 1] });
+
+            document.querySelectorAll('.video-player').forEach(player => {
+                observer.observe(player);
+            });
+        }
+
+        document.getElementById('feed').addEventListener('click', e => {
+            if (e.target.tagName === 'VIDEO') {
+                if (e.target.paused) {
+                    e.target.play().catch(() => {});
+                } else {
+                    e.target.pause();
+                }
+                playSound(600, 0.1);
             }
         });
 
-        showEmptyState();
+        document.getElementById('login-user').addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
     </script>
 </body>
 </html>
