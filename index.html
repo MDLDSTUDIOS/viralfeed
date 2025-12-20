@@ -313,6 +313,16 @@
             pointer-events: auto;
         }
 
+        .left-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .right-controls {
+            display: flex;
+            gap: 10px;
+        }
+
         .control-btn {
             width: 50px;
             height: 50px;
@@ -335,6 +345,16 @@
         .flip-btn {
             background: rgba(138, 43, 226, 0.3);
             border: 2px solid rgba(138, 43, 226, 0.6);
+        }
+
+        .flash-btn {
+            background: rgba(255, 193, 7, 0.3);
+            border: 2px solid rgba(255, 193, 7, 0.6);
+        }
+
+        .flash-btn.active {
+            background: rgba(255, 193, 7, 0.8);
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.6);
         }
 
         .recording-indicator {
@@ -580,12 +600,17 @@
                 <video id="recorder-preview" autoplay muted playsinline></video>
                 <div class="camera-overlay">
                     <div class="top-controls">
-                        <button class="control-btn" id="close-camera-btn">✕</button>
+                        <div class="left-controls">
+                            <button class="control-btn" id="close-camera-btn">✕</button>
+                        </div>
                         <div class="recording-indicator" id="rec-indicator">
                             <div class="rec-dot"></div>
                             <span class="rec-time" id="rec-time">0:00</span>
                         </div>
-                        <button class="control-btn flip-btn" id="flip-btn">🔄</button>
+                        <div class="right-controls">
+                            <button class="control-btn flash-btn" id="flash-btn">⚡</button>
+                            <button class="control-btn flip-btn" id="flip-btn">🔄</button>
+                        </div>
                     </div>
                     <div class="bottom-controls">
                         <div class="record-button" id="record-btn"></div>
@@ -630,7 +655,9 @@
             facingMode: "environment",
             recordingStart: 0,
             recordingTimer: null,
-            videoIndex: 0
+            videoIndex: 0,
+            flashEnabled: false,
+            videoTrack: null
         };
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -688,11 +715,17 @@
         function openCamera() {
             playSound(600, 0.1);
             app.facingMode = "environment";
+            app.flashEnabled = false;
             showScreen('camera-screen');
             startCamera();
         }
 
         function closeCamera() {
+            // Apagar flash si está encendido
+            if (app.flashEnabled && app.videoTrack) {
+                app.videoTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+            }
+            
             if (app.stream) {
                 app.stream.getTracks().forEach(t => t.stop());
                 app.stream = null;
@@ -703,14 +736,51 @@
             }
             document.getElementById('rec-indicator').classList.remove('active');
             document.getElementById('record-btn').classList.remove('recording');
+            document.getElementById('flash-btn').classList.remove('active');
             const hasFeed = document.getElementById('feed').children.length > 0;
             showScreen(hasFeed ? 'feed-screen' : 'empty-screen');
         }
 
         function flipCamera() {
             playSound(700, 0.1);
+            // Apagar flash al cambiar de cámara
+            if (app.flashEnabled && app.videoTrack) {
+                app.videoTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+                app.flashEnabled = false;
+                document.getElementById('flash-btn').classList.remove('active');
+            }
             app.facingMode = app.facingMode === "user" ? "environment" : "user";
             startCamera();
+        }
+
+        async function toggleFlash() {
+            if (!app.videoTrack) return;
+
+            const capabilities = app.videoTrack.getCapabilities();
+            if (!capabilities.torch) {
+                alert('Este dispositivo no tiene flash disponible');
+                return;
+            }
+
+            try {
+                app.flashEnabled = !app.flashEnabled;
+                await app.videoTrack.applyConstraints({
+                    advanced: [{ torch: app.flashEnabled }]
+                });
+
+                const flashBtn = document.getElementById('flash-btn');
+                if (app.flashEnabled) {
+                    flashBtn.classList.add('active');
+                    playSound(900, 0.1);
+                } else {
+                    flashBtn.classList.remove('active');
+                    playSound(600, 0.1);
+                }
+            } catch (err) {
+                console.error('Error al controlar el flash:', err);
+                app.flashEnabled = false;
+                document.getElementById('flash-btn').classList.remove('active');
+            }
         }
 
         function updateRecTime() {
@@ -901,6 +971,7 @@
         document.getElementById('nav-upload-btn').addEventListener('click', openCamera);
         document.getElementById('close-camera-btn').addEventListener('click', closeCamera);
         document.getElementById('flip-btn').addEventListener('click', flipCamera);
+        document.getElementById('flash-btn').addEventListener('click', toggleFlash);
         document.getElementById('record-btn').addEventListener('click', toggleRecord);
         document.getElementById('discard-btn').addEventListener('click', discardVideo);
         document.getElementById('retake-btn').addEventListener('click', retakeVideo);
