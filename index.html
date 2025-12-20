@@ -35,19 +35,23 @@
             flex-direction: column;
         }
 
-        #auth-screen {
+        .screen {
             position: absolute;
             inset: 0;
-            z-index: 5000;
-            background: linear-gradient(135deg, #000 0%, #2e004d 100%);
+            display: none;
+        }
+
+        .screen.active {
             display: flex;
+        }
+
+        /* AUTH SCREEN */
+        #auth-screen {
+            background: linear-gradient(135deg, #000 0%, #2e004d 100%);
             align-items: center;
             justify-content: center;
             padding: 40px;
-        }
-
-        #auth-screen.hidden {
-            display: none;
+            z-index: 5000;
         }
 
         .login-card {
@@ -87,26 +91,45 @@
             box-shadow: 0 0 20px rgba(138, 43, 226, 0.3);
         }
 
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
+        }
+
+        .beta-text {
+            opacity: 0.4;
+            font-size: 11px;
+            margin-top: 20px;
+        }
+
+        /* FEED SCREEN */
+        #feed-screen {
+            flex-direction: column;
+            z-index: 100;
+        }
+
         #feed {
             flex: 1;
             overflow-y: scroll;
             scroll-snap-type: y mandatory;
             scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: auto;
         }
 
         #feed::-webkit-scrollbar {
             display: none;
         }
 
-        #feed.hidden {
-            display: none;
-        }
-
         .video-player {
             width: 100%;
-            height: 100vh;
+            height: calc(100vh - 75px);
             scroll-snap-align: start;
             scroll-snap-stop: always;
             position: relative;
@@ -117,48 +140,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-        }
-
-        #empty-state {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 40px;
-            background: radial-gradient(circle at center, #1a0b2e 0%, #050505 100%);
-        }
-
-        #empty-state.hidden {
-            display: none;
-        }
-
-        .empty-icon {
-            font-size: 110px;
-            margin-bottom: 25px;
-            filter: drop-shadow(0 0 25px var(--primary));
-            animation: floating 3s ease-in-out infinite;
-        }
-
-        @keyframes floating {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .empty-state h2 {
-            font-size: 2rem;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 15px;
-            font-weight: 700;
-        }
-
-        .empty-state p {
-            color: #999;
-            margin: 15px 0 30px;
-            line-height: 1.6;
         }
 
         .ui-overlay {
@@ -175,7 +156,7 @@
         .side-bar {
             position: absolute;
             right: 15px;
-            bottom: 120px;
+            bottom: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -223,8 +204,8 @@
 
         .video-info {
             pointer-events: auto;
-            margin-bottom: 80px;
-            max-width: 75%;
+            margin-bottom: 20px;
+            max-width: 70%;
         }
 
         .video-info h4 {
@@ -247,8 +228,9 @@
             font-size: 120px;
             opacity: 0;
             pointer-events: none;
-            filter: drop-shadow(0 0 20px #00f2ea) drop-shadow(0 0 40px #8a2be2);
+            filter: drop-shadow(0 0 20px #00f2ea);
             color: #00f2ea;
+            animation: pop 0.8s ease-out;
         }
 
         @keyframes pop {
@@ -257,101 +239,214 @@
             100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
         }
 
-        #upload-modal {
-            position: absolute;
-            inset: 0;
-            background: #000;
-            z-index: 4000;
-            display: none;
+        /* EMPTY STATE */
+        #empty-screen {
+            background: radial-gradient(circle at center, #1a0b2e 0%, #050505 100%);
             flex-direction: column;
-            padding: 20px;
-        }
-
-        #upload-modal.active {
-            display: flex;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            justify-content: center;
+            text-align: center;
+            padding: 40px;
+            z-index: 100;
         }
 
-        .modal-header h3 {
-            font-size: 1.5rem;
+        .empty-icon {
+            font-size: 110px;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 25px var(--primary));
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .empty-screen h2 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
             font-weight: 700;
         }
 
-        .modal-close {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: none;
-            font-size: 28px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
+        .empty-screen p {
+            color: #999;
+            margin: 15px 0 30px;
+            line-height: 1.6;
         }
 
-        .camera-container {
+        /* CAMERA SCREEN */
+        #camera-screen {
+            z-index: 4000;
+        }
+
+        .camera-fullscreen {
             width: 100%;
-            flex: 1;
-            background: #111;
-            border-radius: 20px;
-            overflow: hidden;
+            height: 100vh;
             position: relative;
-            border: 3px solid rgba(138, 43, 226, 0.3);
+            overflow: hidden;
+            background: #000;
         }
 
         #recorder-preview {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            display: block;
         }
 
-        .recorder-controls {
-            padding: 30px 0;
+        .camera-overlay {
+            position: absolute;
+            inset: 0;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            pointer-events: auto;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 24px;
+            display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-        }
-
-        .rec-circle {
-            width: 75px;
-            height: 75px;
-            border-radius: 50%;
-            border: 5px solid white;
-            background: linear-gradient(135deg, #ff0844, #ff4444);
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(255, 8, 68, 0.5);
         }
 
-        .rec-circle.recording {
-            border-radius: 15px;
-            animation: pulse 1.5s ease-in-out infinite;
+        .control-btn:active {
+            transform: scale(0.9);
         }
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+        .flip-btn {
+            background: rgba(138, 43, 226, 0.3);
+            border: 2px solid rgba(138, 43, 226, 0.6);
         }
 
-        #post-actions {
+        .recording-indicator {
             display: none;
-            width: 100%;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 25px;
+        }
+
+        .recording-indicator.active {
+            display: flex;
+        }
+
+        .rec-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff0000;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .rec-time {
+            font-weight: 700;
+            color: white;
+        }
+
+        .bottom-controls {
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        .record-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: white;
+            border: 6px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .record-button::before {
+            content: '';
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #ff0844;
+            transition: all 0.3s ease;
+        }
+
+        .record-button.recording::before {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+        }
+
+        /* PREVIEW SCREEN */
+        #preview-screen {
+            flex-direction: column;
+            background: #000;
+            z-index: 4500;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .preview-header h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .preview-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+
+        #preview-video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .preview-form {
+            background: rgba(0, 0, 0, 0.95);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
             gap: 15px;
         }
 
-        #post-actions.active {
-            display: flex;
-            flex-direction: column;
-        }
-
-        #post-actions input {
+        .preview-form textarea {
             width: 100%;
             padding: 16px 20px;
             border-radius: 16px;
@@ -360,20 +455,60 @@
             color: white;
             font-size: 1rem;
             outline: none;
+            resize: none;
+            min-height: 100px;
+            font-family: inherit;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+        .preview-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
             color: white;
-            border: none;
-            padding: 16px 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 16px;
             border-radius: 16px;
             font-weight: 700;
-            font-size: 1rem;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
         }
 
+        /* LOADING */
+        #loading-screen {
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 6000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 5px solid rgba(138, 43, 226, 0.2);
+            border-top: 5px solid var(--secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.3rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* NAV */
         nav {
             height: 75px;
             background: rgba(0, 0, 0, 0.95);
@@ -403,144 +538,104 @@
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(138, 43, 226, 0.5);
         }
-
-        .beta-text {
-            opacity: 0.4;
-            font-size: 11px;
-            margin-top: 20px;
-        }
-
-        #loading-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 6000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 30px;
-        }
-
-        #loading-overlay.active {
-            display: flex;
-        }
-
-        .loading-spinner {
-            width: 80px;
-            height: 80px;
-            border: 5px solid rgba(138, 43, 226, 0.2);
-            border-top: 5px solid var(--secondary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            font-size: 1.3rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: pulse-text 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse-text {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .loading-progress {
-            width: 200px;
-            height: 4px;
-            background: rgba(138, 43, 226, 0.2);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .loading-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            width: 0%;
-            animation: progress 2s ease-in-out;
-        }
-
-        @keyframes progress {
-            0% { width: 0%; }
-            100% { width: 100%; }
-        }
     </style>
 </head>
 <body>
     <div id="app-container">
-        <div id="auth-screen">
+        <!-- AUTH -->
+        <div id="auth-screen" class="screen active">
             <div class="login-card">
                 <h1>ClipFlow</h1>
                 <p>Crea, comparte y descubre videos increíbles</p>
-                <input type="text" id="login-user" placeholder="Tu nombre de usuario">
-                <button class="btn-primary" style="width:100%" onclick="handleLogin()">Comenzar</button>
+                <input type="text" id="username-input" placeholder="Tu nombre de usuario">
+                <button class="btn-primary" id="start-btn">Comenzar</button>
                 <p class="beta-text">VERSION BETA V1.0</p>
             </div>
         </div>
 
-        <div id="loading-overlay">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Procesando tu video...</div>
-            <div class="loading-progress">
-                <div class="loading-bar"></div>
-            </div>
-        </div>
-
-        <main id="feed" class="hidden"></main>
-
-        <div id="empty-state" class="hidden">
+        <!-- EMPTY -->
+        <div id="empty-screen" class="screen">
             <div class="empty-icon">🎬</div>
             <h2>Sé el primero en brillar</h2>
             <p>El feed está esperando tu talento. Graba tu primer video y comparte tu creatividad.</p>
-            <button class="btn-primary" onclick="openModal()">🎥 Crear Video</button>
+            <button class="btn-primary" id="create-btn">🎥 Crear Video</button>
             <p class="beta-text">PROTOTIPO EN DESARROLLO</p>
         </div>
 
-        <div id="upload-modal">
-            <div class="modal-header">
-                <h3>📹 Crear Video</h3>
-                <button class="modal-close" onclick="closeModal()">✕</button>
-            </div>
-            <div class="camera-container">
+        <!-- FEED -->
+        <div id="feed-screen" class="screen">
+            <div id="feed"></div>
+            <nav>
+                <div class="nav-btn" id="home-btn">🏠</div>
+                <div id="nav-upload-btn">
+                    <div class="upload-center">+</div>
+                </div>
+                <div class="nav-btn">👤</div>
+            </nav>
+        </div>
+
+        <!-- CAMERA -->
+        <div id="camera-screen" class="screen">
+            <div class="camera-fullscreen">
                 <video id="recorder-preview" autoplay muted playsinline></video>
-            </div>
-            <div class="recorder-controls">
-                <div id="rec-btn" class="rec-circle" onclick="toggleRecording()"></div>
-                <div id="post-actions">
-                    <input type="text" id="video-desc" placeholder="Describe tu video...">
-                    <button class="btn-primary" style="width:100%" onclick="publishVideo()">🚀 Publicar Video</button>
+                <div class="camera-overlay">
+                    <div class="top-controls">
+                        <button class="control-btn" id="close-camera-btn">✕</button>
+                        <div class="recording-indicator" id="rec-indicator">
+                            <div class="rec-dot"></div>
+                            <span class="rec-time" id="rec-time">0:00</span>
+                        </div>
+                        <button class="control-btn flip-btn" id="flip-btn">🔄</button>
+                    </div>
+                    <div class="bottom-controls">
+                        <div class="record-button" id="record-btn"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <nav>
-            <div class="nav-btn" onclick="scrollToTop()">🏠</div>
-            <div onclick="openModal()">
-                <div class="upload-center">+</div>
+        <!-- PREVIEW -->
+        <div id="preview-screen" class="screen">
+            <div class="preview-header">
+                <button class="control-btn" id="discard-btn">🗑️</button>
+                <h3>Vista previa</h3>
+                <div style="width:50px"></div>
             </div>
-            <div class="nav-btn">👤</div>
-        </nav>
+            <div class="preview-container">
+                <video id="preview-video" controls loop playsinline></video>
+            </div>
+            <div class="preview-form">
+                <textarea id="video-description" placeholder="Escribe una descripción para tu video..."></textarea>
+                <div class="preview-actions">
+                    <button class="btn-secondary" id="retake-btn">🔄 Regrabar</button>
+                    <button class="btn-primary" id="publish-btn" style="flex:2">🚀 Publicar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOADING -->
+        <div id="loading-screen" class="screen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Procesando tu video...</div>
+        </div>
     </div>
 
     <script>
-        let currentUser = "Invitado";
-        let mediaRecorder;
-        let recordedChunks = [];
-        let stream;
-        let currentVideoIndex = 0;
-        let isScrolling = false;
+        // Variables globales
+        const app = {
+            user: "Invitado",
+            stream: null,
+            mediaRecorder: null,
+            recordedChunks: [],
+            facingMode: "environment",
+            recordingStart: 0,
+            recordingTimer: null,
+            videoIndex: 0
+        };
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+        // Funciones de utilidad
         function playSound(freq, duration) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -550,110 +645,166 @@
             osc.type = 'sine';
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            osc.start(audioCtx.currentTime);
+            osc.start();
             osc.stop(audioCtx.currentTime + duration);
         }
 
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // AUTH
         function handleLogin() {
-            const user = document.getElementById('login-user').value;
-            if (user.trim()) {
-                currentUser = user.trim();
+            const input = document.getElementById('username-input');
+            if (input.value.trim()) {
+                app.user = input.value.trim();
                 playSound(800, 0.2);
-                document.getElementById('auth-screen').classList.add('hidden');
-                document.getElementById('empty-state').classList.remove('hidden');
+                showScreen('empty-screen');
             }
         }
 
-        async function openModal() {
-            playSound(600, 0.1);
-            document.getElementById('upload-modal').classList.add('active');
+        // CAMERA
+        async function startCamera() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: 'user',
-                        aspectRatio: 9/16,
-                        width: { ideal: 720 },
-                        height: { ideal: 1280 }
+                if (app.stream) {
+                    app.stream.getTracks().forEach(t => t.stop());
+                }
+                app.stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: app.facingMode,
+                        width: { ideal: 1080 },
+                        height: { ideal: 1920 }
                     },
                     audio: true
                 });
-                document.getElementById('recorder-preview').srcObject = stream;
+                document.getElementById('recorder-preview').srcObject = app.stream;
             } catch (err) {
                 alert("No se pudo acceder a la cámara");
-                closeModal();
+                closeCamera();
             }
         }
 
-        function closeModal() {
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-                stream = null;
-            }
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-            }
-            document.getElementById('upload-modal').classList.remove('active');
-            document.getElementById('post-actions').classList.remove('active');
-            document.getElementById('rec-btn').style.display = 'block';
-            document.getElementById('rec-btn').classList.remove('recording');
-            document.getElementById('video-desc').value = '';
-            recordedChunks = [];
+        function openCamera() {
+            playSound(600, 0.1);
+            app.facingMode = "environment";
+            showScreen('camera-screen');
+            startCamera();
         }
 
-        function toggleRecording() {
-            const btn = document.getElementById('rec-btn');
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
+        function closeCamera() {
+            if (app.stream) {
+                app.stream.getTracks().forEach(t => t.stop());
+                app.stream = null;
+            }
+            if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
+                app.mediaRecorder.stop();
+                clearInterval(app.recordingTimer);
+            }
+            document.getElementById('rec-indicator').classList.remove('active');
+            document.getElementById('record-btn').classList.remove('recording');
+            const hasFeed = document.getElementById('feed').children.length > 0;
+            showScreen(hasFeed ? 'feed-screen' : 'empty-screen');
+        }
+
+        function flipCamera() {
+            playSound(700, 0.1);
+            app.facingMode = app.facingMode === "user" ? "environment" : "user";
+            startCamera();
+        }
+
+        function updateRecTime() {
+            const elapsed = Math.floor((Date.now() - app.recordingStart) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            document.getElementById('rec-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function toggleRecord() {
+            const btn = document.getElementById('record-btn');
+            const indicator = document.getElementById('rec-indicator');
+
+            if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
+                app.mediaRecorder.stop();
                 btn.classList.remove('recording');
-                playSound(600, 0.1);
+                indicator.classList.remove('active');
+                clearInterval(app.recordingTimer);
+                playSound(600, 0.2);
             } else {
-                recordedChunks = [];
-                const options = { mimeType: 'video/webm;codecs=vp9' };
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options.mimeType = 'video/webm';
+                app.recordedChunks = [];
+                const opts = { mimeType: 'video/webm;codecs=vp9,opus' };
+                if (!MediaRecorder.isTypeSupported(opts.mimeType)) {
+                    opts.mimeType = 'video/webm';
                 }
-                mediaRecorder = new MediaRecorder(stream, options);
-                
-                mediaRecorder.ondataavailable = e => {
-                    if (e.data.size > 0) recordedChunks.push(e.data);
+
+                app.mediaRecorder = new MediaRecorder(app.stream, opts);
+                app.mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) app.recordedChunks.push(e.data);
                 };
-                mediaRecorder.onstop = () => {
-                    document.getElementById('post-actions').classList.add('active');
-                    btn.style.display = 'none';
-                };
-                mediaRecorder.start();
+                app.mediaRecorder.onstop = showPreview;
+                app.mediaRecorder.start();
+
                 btn.classList.add('recording');
-                playSound(1000, 0.1);
+                indicator.classList.add('active');
+                app.recordingStart = Date.now();
+                app.recordingTimer = setInterval(updateRecTime, 1000);
+                playSound(1000, 0.2);
             }
         }
 
-        async function publishVideo() {
-            if (recordedChunks.length === 0) {
-                alert("No hay video grabado");
-                return;
+        // PREVIEW
+        function showPreview() {
+            if (app.stream) {
+                app.stream.getTracks().forEach(t => t.stop());
+                app.stream = null;
             }
 
-            document.getElementById('loading-overlay').classList.add('active');
-            playSound(1200, 0.2);
-
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const blob = new Blob(app.recordedChunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
-            const desc = document.getElementById('video-desc').value || "¡Nuevo clip en ClipFlow! ✨";
+            document.getElementById('preview-video').src = url;
+            showScreen('preview-screen');
+        }
 
-            const post = document.createElement('div');
-            post.className = 'video-player';
-            post.dataset.index = currentVideoIndex++;
-            post.innerHTML = `
+        function discardVideo() {
+            if (confirm('¿Descartar este video?')) {
+                app.recordedChunks = [];
+                document.getElementById('video-description').value = '';
+                const hasFeed = document.getElementById('feed').children.length > 0;
+                showScreen(hasFeed ? 'feed-screen' : 'empty-screen');
+            }
+        }
+
+        function retakeVideo() {
+            app.recordedChunks = [];
+            document.getElementById('video-description').value = '';
+            openCamera();
+        }
+
+        // PUBLISH
+        async function publishVideo() {
+            if (app.recordedChunks.length === 0) return;
+
+            showScreen('loading-screen');
+            playSound(1200, 0.2);
+            await new Promise(r => setTimeout(r, 1500));
+
+            const blob = new Blob(app.recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const desc = document.getElementById('video-description').value || "¡Nuevo clip en ClipFlow! ✨";
+
+            const player = document.createElement('div');
+            player.className = 'video-player';
+            player.innerHTML = `
                 <video src="${url}" loop playsinline preload="auto"></video>
-                <div class="heart-pop">❤️</div>
+                <div class="heart-pop" style="left:50%;top:50%">❤️</div>
                 <div class="ui-overlay">
                     <div class="side-bar">
-                        <div class="profile-btn"><img src="https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser)}&background=8a2be2&color=fff&bold=true"></div>
-                        <button class="action-btn" onclick="toggleLike(this)">
+                        <div class="profile-btn">
+                            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(app.user)}&background=8a2be2&color=fff&bold=true">
+                        </div>
+                        <button class="action-btn like-btn">
                             <div class="icon">🤍</div>
-                            <span class="l-count">0</span>
+                            <span class="like-count">0</span>
                         </button>
                         <button class="action-btn">
                             <div class="icon">💬</div>
@@ -665,84 +816,65 @@
                         </button>
                     </div>
                     <div class="video-info">
-                        <h4>@${currentUser.toLowerCase().replace(/\s+/g, '_')}</h4>
+                        <h4>@${app.user.toLowerCase().replace(/\s+/g, '_')}</h4>
                         <p>${desc}</p>
                     </div>
                 </div>
             `;
 
-            post.addEventListener('dblclick', function(e) {
+            const likeBtn = player.querySelector('.like-btn');
+            likeBtn.addEventListener('click', () => toggleLike(likeBtn));
+
+            player.addEventListener('dblclick', e => {
                 if (e.target.tagName === 'BUTTON') return;
-                
-                const rect = this.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                toggleLike(this.querySelector('.action-btn'), true, x, y);
+                const rect = player.getBoundingClientRect();
+                animateHeart(player, e.clientX - rect.left, e.clientY - rect.top);
+                toggleLike(likeBtn, true);
             });
 
             const feed = document.getElementById('feed');
-            feed.prepend(post);
-            feed.classList.remove('hidden');
-            document.getElementById('empty-state').classList.add('hidden');
+            feed.prepend(player);
+            document.getElementById('video-description').value = '';
 
-            const video = post.querySelector('video');
-            video.load();
-            
-            setTimeout(() => {
-                document.getElementById('loading-overlay').classList.remove('active');
-                closeModal();
-                feed.scrollTop = 0;
-                setupVideoPlayback();
-                video.play().catch(() => {});
-            }, 500);
+            showScreen('feed-screen');
+            feed.scrollTop = 0;
+            setupVideoObserver();
+            player.querySelector('video').play().catch(() => {});
         }
 
-        function toggleLike(btn, force = false, x = null, y = null) {
+        function toggleLike(btn, force = false) {
             const icon = btn.querySelector('.icon');
-            const count = btn.querySelector('.l-count');
-            const heart = btn.closest('.video-player').querySelector('.heart-pop');
+            const count = btn.querySelector('.like-count');
 
-            if (icon.innerText === "🤍" || force) {
-                if (icon.innerText === "🤍") {
-                    count.innerText = parseInt(count.innerText) + 1;
+            if (icon.textContent === "🤍" || force) {
+                if (icon.textContent === "🤍") {
+                    count.textContent = parseInt(count.textContent) + 1;
                 }
-                icon.innerText = "❤️";
+                icon.textContent = "❤️";
                 icon.style.color = "#00f2ea";
                 playSound(800, 0.1);
-                
-                if (x !== null && y !== null) {
-                    heart.style.left = x + 'px';
-                    heart.style.top = y + 'px';
-                    heart.style.transform = 'translate(-50%, -50%) scale(0)';
-                } else {
-                    heart.style.left = '50%';
-                    heart.style.top = '50%';
-                    heart.style.transform = 'translate(-50%, -50%) scale(0)';
-                }
-                
-                heart.style.animation = 'none';
-                heart.offsetHeight;
-                heart.style.animation = 'pop 0.8s ease-out';
             } else {
-                icon.innerText = "🤍";
+                icon.textContent = "🤍";
                 icon.style.color = "white";
-                count.innerText = Math.max(0, parseInt(count.innerText) - 1);
+                count.textContent = Math.max(0, parseInt(count.textContent) - 1);
             }
         }
 
-        function scrollToTop() {
-            playSound(600, 0.1);
-            const feed = document.getElementById('feed');
-            feed.scrollTo({ top: 0, behavior: 'smooth' });
+        function animateHeart(player, x, y) {
+            const heart = player.querySelector('.heart-pop');
+            heart.style.left = x + 'px';
+            heart.style.top = y + 'px';
+            heart.style.animation = 'none';
+            heart.offsetHeight;
+            heart.style.animation = 'pop 0.8s ease-out';
         }
 
-        function setupVideoPlayback() {
-            const observer = new IntersectionObserver((entries) => {
+        function setupVideoObserver() {
+            const observer = new IntersectionObserver(entries => {
                 entries.forEach(entry => {
                     const video = entry.target.querySelector('video');
                     if (!video) return;
-                    
+
                     if (entry.isIntersecting && entry.intersectionRatio >= 0.75) {
                         video.currentTime = 0;
                         video.play().catch(() => {});
@@ -750,41 +882,55 @@
                         video.pause();
                     }
                 });
-            }, { 
-                threshold: [0, 0.75, 1],
-                rootMargin: '0px'
-            });
+            }, { threshold: [0, 0.75, 1] });
 
-            document.querySelectorAll('.video-player').forEach(player => {
-                observer.observe(player);
-            });
+            document.querySelectorAll('.video-player').forEach(p => observer.observe(p));
         }
 
+        function scrollToTop() {
+            playSound(600, 0.1);
+            document.getElementById('feed').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Event Listeners
+        document.getElementById('start-btn').addEventListener('click', handleLogin);
+        document.getElementById('username-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter') handleLogin();
+        });
+        document.getElementById('create-btn').addEventListener('click', openCamera);
+        document.getElementById('nav-upload-btn').addEventListener('click', openCamera);
+        document.getElementById('close-camera-btn').addEventListener('click', closeCamera);
+        document.getElementById('flip-btn').addEventListener('click', flipCamera);
+        document.getElementById('record-btn').addEventListener('click', toggleRecord);
+        document.getElementById('discard-btn').addEventListener('click', discardVideo);
+        document.getElementById('retake-btn').addEventListener('click', retakeVideo);
+        document.getElementById('publish-btn').addEventListener('click', publishVideo);
+        document.getElementById('home-btn').addEventListener('click', scrollToTop);
+
+        // Feed scroll snap
         const feed = document.getElementById('feed');
         let scrollTimer;
-        
         feed.addEventListener('scroll', () => {
             clearTimeout(scrollTimer);
             scrollTimer = setTimeout(() => {
                 const players = document.querySelectorAll('.video-player');
-                let closestPlayer = null;
-                let minDistance = Infinity;
-                
-                players.forEach(player => {
-                    const rect = player.getBoundingClientRect();
-                    const distance = Math.abs(rect.top);
-                    
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestPlayer = player;
+                let closest = null;
+                let minDist = Infinity;
+
+                players.forEach(p => {
+                    const rect = p.getBoundingClientRect();
+                    const dist = Math.abs(rect.top);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = p;
                     }
                 });
-                
-                if (closestPlayer && minDistance > 50) {
-                    closestPlayer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                if (closest && minDist > 50) {
+                    closest.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             }, 100);
-        }, { passive: true });
+        });
 
         feed.addEventListener('click', e => {
             if (e.target.tagName === 'VIDEO') {
@@ -794,12 +940,6 @@
                     e.target.pause();
                 }
                 playSound(600, 0.1);
-            }
-        });
-
-        document.getElementById('login-user').addEventListener('keypress', e => {
-            if (e.key === 'Enter') {
-                handleLogin();
             }
         });
     </script>
