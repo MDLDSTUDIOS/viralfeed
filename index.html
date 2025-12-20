@@ -294,15 +294,16 @@
         }
 
         #recorder-preview {
-            min-width: 100%;
-            min-height: 100%;
-            width: auto;
-            height: auto;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 0;
+            left: 0;
+        }
+        
+        #recorder-preview.front-camera {
+            transform: scaleX(-1);
         }
 
         .camera-overlay {
@@ -661,7 +662,7 @@
             stream: null,
             mediaRecorder: null,
             recordedChunks: [],
-            facingMode: "environment",
+            facingMode: "user",
             recordingStart: 0,
             recordingTimer: null,
             videoIndex: 0,
@@ -706,16 +707,35 @@
                 if (app.stream) {
                     app.stream.getTracks().forEach(t => t.stop());
                 }
-                app.stream = await navigator.mediaDevices.getUserMedia({
+                
+                // Configuración para video vertical forzado (9:16)
+                const constraints = {
                     video: {
                         facingMode: app.facingMode,
                         width: { ideal: 1080 },
-                        height: { ideal: 1920 }
+                        height: { ideal: 1920 },
+                        aspectRatio: { ideal: 9/16 }
                     },
                     audio: true
-                });
-                document.getElementById('recorder-preview').srcObject = app.stream;
+                };
+                
+                app.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                const videoElement = document.getElementById('recorder-preview');
+                videoElement.srcObject = app.stream;
+                
+                // Actualizar videoTrack para el flash
+                app.videoTrack = app.stream.getVideoTracks()[0];
+                
+                // Aplicar efecto espejo solo en cámara frontal
+                if (app.facingMode === "user") {
+                    videoElement.classList.add('front-camera');
+                } else {
+                    videoElement.classList.remove('front-camera');
+                }
+                
             } catch (err) {
+                console.error('Error al acceder a la cámara:', err);
                 alert("No se pudo acceder a la cámara");
                 closeCamera();
             }
@@ -723,7 +743,7 @@
 
         function openCamera() {
             playSound(600, 0.1);
-            app.facingMode = "environment";
+            app.facingMode = "user"; // Comenzar con cámara frontal
             app.flashEnabled = false;
             showScreen('camera-screen');
             startCamera();
@@ -842,12 +862,45 @@
                     mimeType = 'video/webm';
                 }
 
+                // Si estamos en cámara frontal, crear un stream con el video invertido
+                let recordingStream = app.stream;
+                
+                if (app.facingMode === "user") {
+                    // Crear un canvas para invertir el video
+                    const videoElement = document.getElementById('recorder-preview');
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 1080;
+                    canvas.height = 1920;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Capturar frames del video y dibujarlos invertidos
+                    const canvasStream = canvas.captureStream(30); // 30 fps
+                    const audioTrack = app.stream.getAudioTracks()[0];
+                    
+                    if (audioTrack) {
+                        canvasStream.addTrack(audioTrack);
+                    }
+                    
+                    const drawFrame = () => {
+                        if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
+                            ctx.save();
+                            ctx.scale(-1, 1);
+                            ctx.drawImage(videoElement, -canvas.width, 0, canvas.width, canvas.height);
+                            ctx.restore();
+                            requestAnimationFrame(drawFrame);
+                        }
+                    };
+                    
+                    requestAnimationFrame(drawFrame);
+                    recordingStream = canvasStream;
+                }
+
                 const options = {
                     mimeType: mimeType,
                     videoBitsPerSecond: 2500000 // 2.5 Mbps
                 };
 
-                app.mediaRecorder = new MediaRecorder(app.stream, options);
+                app.mediaRecorder = new MediaRecorder(recordingStream, options);
                 
                 app.mediaRecorder.ondataavailable = e => {
                     if (e.data && e.data.size > 0) {
