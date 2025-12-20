@@ -93,15 +93,11 @@
             scroll-snap-type: y mandatory;
             scrollbar-width: none;
             -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
+            scroll-behavior: auto;
         }
 
         #feed::-webkit-scrollbar {
             display: none;
-        }
-        
-        #feed.scrolling {
-            scroll-snap-type: none;
         }
 
         #feed.hidden {
@@ -298,14 +294,21 @@
             cursor: pointer;
         }
 
-        #recorder-preview {
+        .camera-container {
             width: 100%;
             flex: 1;
             background: #111;
             border-radius: 20px;
-            object-fit: cover;
-            transform: scaleX(-1);
+            overflow: hidden;
+            position: relative;
             border: 3px solid rgba(138, 43, 226, 0.3);
+        }
+
+        #recorder-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
 
         .recorder-controls {
@@ -507,7 +510,9 @@
                 <h3>📹 Crear Video</h3>
                 <button class="modal-close" onclick="closeModal()">✕</button>
             </div>
-            <video id="recorder-preview" autoplay muted playsinline></video>
+            <div class="camera-container">
+                <video id="recorder-preview" autoplay muted playsinline></video>
+            </div>
             <div class="recorder-controls">
                 <div id="rec-btn" class="rec-circle" onclick="toggleRecording()"></div>
                 <div id="post-actions">
@@ -531,6 +536,8 @@
         let mediaRecorder;
         let recordedChunks = [];
         let stream;
+        let currentVideoIndex = 0;
+        let isScrolling = false;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -565,8 +572,8 @@
                     video: { 
                         facingMode: 'user',
                         aspectRatio: 9/16,
-                        width: { ideal: 1080 },
-                        height: { ideal: 1920 }
+                        width: { ideal: 720 },
+                        height: { ideal: 1280 }
                     },
                     audio: true
                 });
@@ -582,11 +589,15 @@
                 stream.getTracks().forEach(t => t.stop());
                 stream = null;
             }
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+            }
             document.getElementById('upload-modal').classList.remove('active');
             document.getElementById('post-actions').classList.remove('active');
             document.getElementById('rec-btn').style.display = 'block';
             document.getElementById('rec-btn').classList.remove('recording');
             document.getElementById('video-desc').value = '';
+            recordedChunks = [];
         }
 
         function toggleRecording() {
@@ -597,10 +608,12 @@
                 playSound(600, 0.1);
             } else {
                 recordedChunks = [];
-                mediaRecorder = new MediaRecorder(stream, {
-                    mimeType: 'video/webm;codecs=vp9',
-                    videoBitsPerSecond: 2500000
-                });
+                const options = { mimeType: 'video/webm;codecs=vp9' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'video/webm';
+                }
+                mediaRecorder = new MediaRecorder(stream, options);
+                
                 mediaRecorder.ondataavailable = e => {
                     if (e.data.size > 0) recordedChunks.push(e.data);
                 };
@@ -620,12 +633,10 @@
                 return;
             }
 
-            // Mostrar loading
             document.getElementById('loading-overlay').classList.add('active');
             playSound(1200, 0.2);
 
-            // Simular procesamiento
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
             const blob = new Blob(recordedChunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
@@ -633,6 +644,7 @@
 
             const post = document.createElement('div');
             post.className = 'video-player';
+            post.dataset.index = currentVideoIndex++;
             post.innerHTML = `
                 <video src="${url}" loop playsinline preload="auto"></video>
                 <div class="heart-pop">❤️</div>
@@ -677,12 +689,11 @@
             const video = post.querySelector('video');
             video.load();
             
-            // Ocultar loading y cerrar modal
             setTimeout(() => {
                 document.getElementById('loading-overlay').classList.remove('active');
                 closeModal();
                 feed.scrollTop = 0;
-                initObserver();
+                setupVideoPlayback();
                 video.play().catch(() => {});
             }, 500);
         }
@@ -726,36 +737,56 @@
             feed.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function initObserver() {
+        function setupVideoPlayback() {
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     const video = entry.target.querySelector('video');
-                    if (video) {
-                        if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
-                            video.play().catch(() => {});
-                        } else {
-                            video.pause();
-                        }
+                    if (!video) return;
+                    
+                    if (entry.isIntersecting && entry.intersectionRatio >= 0.75) {
+                        video.currentTime = 0;
+                        video.play().catch(() => {});
+                    } else {
+                        video.pause();
                     }
                 });
-            }, { threshold: [0, 0.7, 1] });
+            }, { 
+                threshold: [0, 0.75, 1],
+                rootMargin: '0px'
+            });
 
             document.querySelectorAll('.video-player').forEach(player => {
                 observer.observe(player);
             });
         }
-        
-        let scrollTimeout;
+
         const feed = document.getElementById('feed');
+        let scrollTimer;
+        
         feed.addEventListener('scroll', () => {
-            feed.classList.add('scrolling');
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-                feed.classList.remove('scrolling');
-            }, 150);
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => {
+                const players = document.querySelectorAll('.video-player');
+                let closestPlayer = null;
+                let minDistance = Infinity;
+                
+                players.forEach(player => {
+                    const rect = player.getBoundingClientRect();
+                    const distance = Math.abs(rect.top);
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestPlayer = player;
+                    }
+                });
+                
+                if (closestPlayer && minDistance > 50) {
+                    closestPlayer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
         }, { passive: true });
 
-        document.getElementById('feed').addEventListener('click', e => {
+        feed.addEventListener('click', e => {
             if (e.target.tagName === 'VIDEO') {
                 if (e.target.paused) {
                     e.target.play().catch(() => {});
