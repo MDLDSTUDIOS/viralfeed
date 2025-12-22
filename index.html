@@ -444,12 +444,6 @@
             font-weight: 700;
             color: white;
         }
-        
-        .pause-btn {
-            background: rgba(255, 193, 7, 0.3);
-            border: 2px solid rgba(255, 193, 7, 0.6);
-            margin-left: 10px;
-        }
 
         .bottom-controls {
             padding: 40px 20px;
@@ -653,7 +647,9 @@
             <div class="login-card">
                 <h1>ClipFlow</h1>
                 <p>Crea, comparte y descubre videos increíbles</p>
-                <input type="text" id="username-input" placeholder="Tu nombre de usuario">
+                <input type="text" id="username-input" placeholder="Tu nombre de usuario" autocomplete="username">
+                <input type="email" id="email-input" placeholder="Tu correo electrónico" autocomplete="email">
+                <input type="password" id="password-input" placeholder="Tu contraseña" autocomplete="new-password">
                 <button class="btn-primary" id="start-btn">Comenzar</button>
                 <p class="beta-text">VERSION BETA V1.0</p>
             </div>
@@ -695,7 +691,6 @@
                             <span class="rec-time" id="rec-time">0:00 / 1:00</span>
                         </div>
                         <div class="right-controls">
-                            <button class="control-btn pause-btn" id="pause-btn" style="display:none">⏸</button>
                             <button class="control-btn flash-btn" id="flash-btn">⚡</button>
                             <button class="control-btn flip-btn" id="flip-btn">🔄</button>
                         </div>
@@ -790,12 +785,45 @@
 
         // AUTH
         function handleLogin() {
-            const input = document.getElementById('username-input');
-            if (input.value.trim()) {
-                app.user = input.value.trim();
-                playSound(800, 0.2);
-                showScreen('empty-screen');
+            const usernameInput = document.getElementById('username-input');
+            const emailInput = document.getElementById('email-input');
+            const passwordInput = document.getElementById('password-input');
+            
+            const username = usernameInput.value.trim();
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            // Validaciones
+            if (!username) {
+                alert('Por favor ingresa tu nombre de usuario');
+                return;
             }
+            
+            if (!email) {
+                alert('Por favor ingresa tu correo electrónico');
+                return;
+            }
+            
+            // Validar formato de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Por favor ingresa un correo electrónico válido');
+                return;
+            }
+            
+            if (!password) {
+                alert('Por favor ingresa tu contraseña');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('La contraseña debe tener al menos 6 caracteres');
+                return;
+            }
+            
+            app.user = username;
+            playSound(800, 0.2);
+            showScreen('empty-screen');
         }
 
         // CAMERA
@@ -928,7 +956,6 @@
             document.getElementById('rec-indicator').classList.remove('active');
             document.getElementById('record-btn').classList.remove('recording');
             document.getElementById('flash-btn').classList.remove('active');
-            document.getElementById('pause-btn').style.display = 'none';
             
             const hasFeed = document.getElementById('feed').children.length > 0;
             showScreen(hasFeed ? 'feed-screen' : 'empty-screen');
@@ -1031,7 +1058,6 @@
                 app.mediaRecorder.stop();
                 btn.classList.remove('recording');
                 indicator.classList.remove('active', 'warning');
-                pauseBtn.style.display = 'none';
                 clearInterval(app.recordingTimer);
                 playSound(600, 0.2);
                 
@@ -1079,7 +1105,7 @@
                     }
                     
                     const drawFrame = () => {
-                        if (app.mediaRecorder && app.mediaRecorder.state === "recording" && !app.isPaused) {
+                        if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
                             app.recordingContext.save();
                             app.recordingContext.scale(-1, 1);
                             app.recordingContext.drawImage(
@@ -1125,7 +1151,6 @@
 
                     btn.classList.add('recording');
                     indicator.classList.add('active');
-                    pauseBtn.style.display = 'flex';
                     app.recordingStart = Date.now();
                     app.recordingTimer = setInterval(updateRecTime, 1000);
                     updateRecTime();
@@ -1137,49 +1162,6 @@
                         cancelAnimationFrame(app.recordingAnimationFrame);
                     }
                 }
-            }
-        }
-
-        function togglePause() {
-            if (!app.mediaRecorder || app.mediaRecorder.state !== "recording") return;
-            
-            const pauseBtn = document.getElementById('pause-btn');
-            
-            if (app.isPaused) {
-                // Reanudar
-                app.mediaRecorder.resume();
-                app.isPaused = false;
-                pauseBtn.textContent = '⏸';
-                
-                // Reanudar el drawFrame si estamos en cámara frontal
-                if (app.facingMode === "user" && !app.recordingAnimationFrame) {
-                    const videoElement = document.getElementById('recorder-preview');
-                    const drawFrame = () => {
-                        if (app.mediaRecorder && app.mediaRecorder.state === "recording" && !app.isPaused) {
-                            app.recordingContext.save();
-                            app.recordingContext.scale(-1, 1);
-                            app.recordingContext.drawImage(
-                                videoElement, 
-                                -app.recordingCanvas.width, 0, 
-                                app.recordingCanvas.width, 
-                                app.recordingCanvas.height
-                            );
-                            app.recordingContext.restore();
-                        }
-                        if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
-                            app.recordingAnimationFrame = requestAnimationFrame(drawFrame);
-                        }
-                    };
-                    app.recordingAnimationFrame = requestAnimationFrame(drawFrame);
-                }
-                
-                playSound(800, 0.1);
-            } else {
-                // Pausar
-                app.mediaRecorder.pause();
-                app.isPaused = true;
-                pauseBtn.textContent = '▶️';
-                playSound(600, 0.1);
             }
         }
         
@@ -1419,7 +1401,6 @@
         document.getElementById('flip-btn').addEventListener('click', flipCamera);
         document.getElementById('flash-btn').addEventListener('click', toggleFlash);
         document.getElementById('record-btn').addEventListener('click', toggleRecord);
-        document.getElementById('pause-btn').addEventListener('click', togglePause);
         document.getElementById('zoom-in-btn').addEventListener('click', () => handleZoom('in'));
         document.getElementById('zoom-out-btn').addEventListener('click', () => handleZoom('out'));
         document.getElementById('discard-btn').addEventListener('click', discardVideo);
