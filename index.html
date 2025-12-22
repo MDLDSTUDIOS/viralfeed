@@ -314,6 +314,48 @@
             justify-content: space-between;
             pointer-events: none;
         }
+        
+        .camera-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 30px;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            display: none;
+        }
+        
+        .camera-loading.active {
+            display: block;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .zoom-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
 
         .top-controls {
             display: flex;
@@ -380,6 +422,10 @@
         .recording-indicator.active {
             display: flex;
         }
+        
+        .recording-indicator.warning {
+            background: rgba(255, 193, 7, 0.5);
+        }
 
         .rec-dot {
             width: 12px;
@@ -397,6 +443,12 @@
         .rec-time {
             font-weight: 700;
             color: white;
+        }
+        
+        .pause-btn {
+            background: rgba(255, 193, 7, 0.3);
+            border: 2px solid rgba(255, 193, 7, 0.6);
+            margin-left: 10px;
         }
 
         .bottom-controls {
@@ -632,6 +684,7 @@
         <div id="camera-screen" class="screen">
             <div class="camera-fullscreen">
                 <video id="recorder-preview" autoplay muted playsinline></video>
+                <div class="camera-loading" id="camera-loading">Cargando cámara...</div>
                 <div class="camera-overlay">
                     <div class="top-controls">
                         <div class="left-controls">
@@ -639,12 +692,17 @@
                         </div>
                         <div class="recording-indicator" id="rec-indicator">
                             <div class="rec-dot"></div>
-                            <span class="rec-time" id="rec-time">0:00</span>
+                            <span class="rec-time" id="rec-time">0:00 / 1:00</span>
                         </div>
                         <div class="right-controls">
+                            <button class="control-btn pause-btn" id="pause-btn" style="display:none">⏸</button>
                             <button class="control-btn flash-btn" id="flash-btn">⚡</button>
                             <button class="control-btn flip-btn" id="flip-btn">🔄</button>
                         </div>
+                    </div>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" id="zoom-out-btn">-</button>
+                        <button class="zoom-btn" id="zoom-in-btn">+</button>
                     </div>
                     <div class="bottom-controls">
                         <div class="record-button" id="record-btn"></div>
@@ -696,7 +754,17 @@
             recordingTimer: null,
             videoIndex: 0,
             flashEnabled: false,
-            videoTrack: null
+            videoTrack: null,
+            videoObserver: null,
+            recordingCanvas: null,
+            recordingContext: null,
+            recordingAnimationFrame: null,
+            currentVideoBlob: null,
+            maxRecordingTime: 60000,
+            isPaused: false,
+            currentZoom: 1,
+            maxZoom: 1,
+            minZoom: 1
         };
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -732,18 +800,35 @@
 
         // CAMERA
         async function startCamera() {
+            const loadingEl = document.getElementById('camera-loading');
+            loadingEl.classList.add('active');
+            
             try {
                 if (app.stream) {
                     app.stream.getTracks().forEach(t => t.stop());
                 }
                 
-                // Configuración flexible para video vertical
+                // Bloquear orientación en portrait
+                try {
+                    if (screen.orientation && screen.orientation.lock) {
+                        await screen.orientation.lock('portrait');
+                    }
+                } catch (err) {
+                    console.log('No se pudo bloquear orientación:', err);
+                }
+                
                 const constraints = {
                     video: {
                         facingMode: app.facingMode,
-                        aspectRatio: { ideal: 9/16 }
+                        aspectRatio: { ideal: 9/16 },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     },
-                    audio: true
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
                 };
                 
                 app.stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -751,8 +836,22 @@
                 const videoElement = document.getElementById('recorder-preview');
                 videoElement.srcObject = app.stream;
                 
-                // Actualizar videoTrack para el flash
+                // Esperar a que el video esté listo
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = () => resolve();
+                });
+                
                 app.videoTrack = app.stream.getVideoTracks()[0];
+                
+                // Configurar zoom inicial
+                const capabilities = app.videoTrack.getCapabilities();
+                if (capabilities.zoom) {
+                    app.currentZoom = capabilities.zoom.min;
+                    app.maxZoom = capabilities.zoom.max;
+                    app.minZoom = capabilities.zoom.min;
+                } else {
+                    document.querySelector('.zoom-controls').style.display = 'none';
+                }
                 
                 // Aplicar efecto espejo solo en cámara frontal
                 if (app.facingMode === "user") {
@@ -761,17 +860,30 @@
                     videoElement.classList.remove('front-camera');
                 }
                 
+                // Actualizar visibilidad del botón de flash
+                const flashBtn = document.getElementById('flash-btn');
+                if (app.facingMode === "user") {
+                    flashBtn.style.opacity = '0.3';
+                } else {
+                    flashBtn.style.opacity = '1';
+                }
+                
+                loadingEl.classList.remove('active');
+                
             } catch (err) {
                 console.error('Error al acceder a la cámara:', err);
-                alert("No se pudo acceder a la cámara");
+                loadingEl.classList.remove('active');
+                alert("No se pudo acceder a la cámara. Por favor verifica los permisos.");
                 closeCamera();
             }
         }
 
         function openCamera() {
             playSound(600, 0.1);
-            app.facingMode = "user"; // Comenzar con cámara frontal
+            app.facingMode = "user";
             app.flashEnabled = false;
+            app.isPaused = false;
+            app.currentZoom = 1;
             showScreen('camera-screen');
             startCamera();
         }
@@ -782,36 +894,76 @@
                 app.videoTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
             }
             
+            // Cancelar animation frame si existe
+            if (app.recordingAnimationFrame) {
+                cancelAnimationFrame(app.recordingAnimationFrame);
+                app.recordingAnimationFrame = null;
+            }
+            
+            // Limpiar canvas
+            if (app.recordingCanvas) {
+                app.recordingCanvas = null;
+                app.recordingContext = null;
+            }
+            
             if (app.stream) {
                 app.stream.getTracks().forEach(t => t.stop());
                 app.stream = null;
             }
+            
             if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
                 app.mediaRecorder.stop();
                 clearInterval(app.recordingTimer);
             }
+            
+            // Desbloquear orientación
+            try {
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+            } catch (err) {
+                console.log('No se pudo desbloquear orientación');
+            }
+            
             document.getElementById('rec-indicator').classList.remove('active');
             document.getElementById('record-btn').classList.remove('recording');
             document.getElementById('flash-btn').classList.remove('active');
+            document.getElementById('pause-btn').style.display = 'none';
+            
             const hasFeed = document.getElementById('feed').children.length > 0;
             showScreen(hasFeed ? 'feed-screen' : 'empty-screen');
         }
 
         function flipCamera() {
             playSound(700, 0.1);
+            
+            // Mostrar loading
+            const loadingEl = document.getElementById('camera-loading');
+            loadingEl.classList.add('active');
+            
             // Apagar flash al cambiar de cámara
             if (app.flashEnabled && app.videoTrack) {
                 app.videoTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
                 app.flashEnabled = false;
                 document.getElementById('flash-btn').classList.remove('active');
             }
+            
             app.facingMode = app.facingMode === "user" ? "environment" : "user";
-            startCamera();
+            
+            // Pequeño delay para feedback visual
+            setTimeout(() => {
+                startCamera();
+            }, 100);
         }
 
         async function toggleFlash() {
             if (!app.videoTrack) {
-                console.log('No hay video track disponible');
+                return;
+            }
+
+            // Solo permitir flash en cámara trasera
+            if (app.facingMode !== "environment") {
+                alert('El flash solo está disponible con la cámara trasera');
                 return;
             }
 
@@ -820,12 +972,12 @@
                 
                 if (!capabilities.torch) {
                     alert('Este dispositivo no tiene flash disponible');
+                    document.getElementById('flash-btn').style.opacity = '0.3';
                     return;
                 }
 
                 app.flashEnabled = !app.flashEnabled;
                 
-                // Aplicar constraint del torch
                 await app.videoTrack.applyConstraints({
                     advanced: [{ torch: app.flashEnabled }]
                 });
@@ -840,23 +992,9 @@
                 }
             } catch (err) {
                 console.error('Error al controlar el flash:', err);
-                // Intentar método alternativo
-                try {
-                    const settings = app.videoTrack.getSettings();
-                    await app.videoTrack.applyConstraints({
-                        torch: app.flashEnabled
-                    });
-                    const flashBtn = document.getElementById('flash-btn');
-                    if (app.flashEnabled) {
-                        flashBtn.classList.add('active');
-                    } else {
-                        flashBtn.classList.remove('active');
-                    }
-                } catch (err2) {
-                    console.error('Flash no disponible en este dispositivo');
-                    app.flashEnabled = false;
-                    document.getElementById('flash-btn').style.display = 'none';
-                }
+                alert('Flash no disponible en este dispositivo');
+                app.flashEnabled = false;
+                document.getElementById('flash-btn').style.opacity = '0.3';
             }
         }
 
@@ -864,23 +1002,48 @@
             const elapsed = Math.floor((Date.now() - app.recordingStart) / 1000);
             const mins = Math.floor(elapsed / 60);
             const secs = elapsed % 60;
-            document.getElementById('rec-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            const maxMins = Math.floor(app.maxRecordingTime / 60000);
+            const maxSecs = Math.floor((app.maxRecordingTime % 60000) / 1000);
+            
+            const timeText = `${mins}:${secs.toString().padStart(2, '0')} / ${maxMins}:${maxSecs.toString().padStart(2, '0')}`;
+            document.getElementById('rec-time').textContent = timeText;
+            
+            // Advertencia cuando quedan 10 segundos
+            const remaining = app.maxRecordingTime - (Date.now() - app.recordingStart);
+            const indicator = document.getElementById('rec-indicator');
+            
+            if (remaining <= 10000 && remaining > 0) {
+                indicator.classList.add('warning');
+            }
+            
+            // Detener automáticamente al llegar al límite
+            if (remaining <= 0) {
+                toggleRecord();
+            }
         }
 
         function toggleRecord() {
             const btn = document.getElementById('record-btn');
             const indicator = document.getElementById('rec-indicator');
+            const pauseBtn = document.getElementById('pause-btn');
 
             if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
                 app.mediaRecorder.stop();
                 btn.classList.remove('recording');
-                indicator.classList.remove('active');
+                indicator.classList.remove('active', 'warning');
+                pauseBtn.style.display = 'none';
                 clearInterval(app.recordingTimer);
                 playSound(600, 0.2);
+                
+                // Cancelar animation frame
+                if (app.recordingAnimationFrame) {
+                    cancelAnimationFrame(app.recordingAnimationFrame);
+                    app.recordingAnimationFrame = null;
+                }
             } else {
                 app.recordedChunks = [];
+                app.isPaused = false;
                 
-                // Usar el mejor codec disponible
                 let mimeType = 'video/webm;codecs=vp9,opus';
                 if (!MediaRecorder.isTypeSupported(mimeType)) {
                     mimeType = 'video/webm;codecs=vp8,opus';
@@ -889,23 +1052,26 @@
                     mimeType = 'video/webm';
                 }
 
-                // Obtener las dimensiones reales del video
                 const videoElement = document.getElementById('recorder-preview');
                 const videoTrack = app.stream.getVideoTracks()[0];
                 const settings = videoTrack.getSettings();
                 
                 let recordingStream = app.stream;
                 
-                // Si estamos en cámara frontal, crear un stream con el video invertido
+                // Si estamos en cámara frontal, invertir horizontalmente
                 if (app.facingMode === "user") {
-                    const canvas = document.createElement('canvas');
-                    // Usar las dimensiones reales del stream
-                    canvas.width = settings.width || 1280;
-                    canvas.height = settings.height || 720;
-                    const ctx = canvas.getContext('2d');
+                    // Crear canvas solo una vez
+                    if (!app.recordingCanvas) {
+                        app.recordingCanvas = document.createElement('canvas');
+                        app.recordingCanvas.width = settings.width || 1280;
+                        app.recordingCanvas.height = settings.height || 720;
+                        app.recordingContext = app.recordingCanvas.getContext('2d', { 
+                            alpha: false,
+                            desynchronized: true 
+                        });
+                    }
                     
-                    // Capturar frames del video y dibujarlos invertidos
-                    const canvasStream = canvas.captureStream(30);
+                    const canvasStream = app.recordingCanvas.captureStream(30);
                     const audioTrack = app.stream.getAudioTracks()[0];
                     
                     if (audioTrack) {
@@ -913,16 +1079,23 @@
                     }
                     
                     const drawFrame = () => {
+                        if (app.mediaRecorder && app.mediaRecorder.state === "recording" && !app.isPaused) {
+                            app.recordingContext.save();
+                            app.recordingContext.scale(-1, 1);
+                            app.recordingContext.drawImage(
+                                videoElement, 
+                                -app.recordingCanvas.width, 0, 
+                                app.recordingCanvas.width, 
+                                app.recordingCanvas.height
+                            );
+                            app.recordingContext.restore();
+                        }
                         if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
-                            ctx.save();
-                            ctx.scale(-1, 1);
-                            ctx.drawImage(videoElement, -canvas.width, 0, canvas.width, canvas.height);
-                            ctx.restore();
-                            requestAnimationFrame(drawFrame);
+                            app.recordingAnimationFrame = requestAnimationFrame(drawFrame);
                         }
                     };
                     
-                    requestAnimationFrame(drawFrame);
+                    app.recordingAnimationFrame = requestAnimationFrame(drawFrame);
                     recordingStream = canvasStream;
                 }
 
@@ -931,28 +1104,107 @@
                     videoBitsPerSecond: 2500000
                 };
 
-                app.mediaRecorder = new MediaRecorder(recordingStream, options);
-                
-                app.mediaRecorder.ondataavailable = e => {
-                    if (e.data && e.data.size > 0) {
-                        app.recordedChunks.push(e.data);
+                try {
+                    app.mediaRecorder = new MediaRecorder(recordingStream, options);
+                    
+                    app.mediaRecorder.ondataavailable = e => {
+                        if (e.data && e.data.size > 0) {
+                            app.recordedChunks.push(e.data);
+                        }
+                    };
+                    
+                    app.mediaRecorder.onstop = showPreview;
+                    
+                    app.mediaRecorder.onerror = e => {
+                        console.error('MediaRecorder error:', e);
+                        alert('Error al grabar video. Por favor intenta nuevamente.');
+                        closeCamera();
+                    };
+
+                    app.mediaRecorder.start(100);
+
+                    btn.classList.add('recording');
+                    indicator.classList.add('active');
+                    pauseBtn.style.display = 'flex';
+                    app.recordingStart = Date.now();
+                    app.recordingTimer = setInterval(updateRecTime, 1000);
+                    updateRecTime();
+                    playSound(1000, 0.2);
+                } catch (err) {
+                    console.error('Error al iniciar grabación:', err);
+                    alert('Error al iniciar la grabación');
+                    if (app.recordingAnimationFrame) {
+                        cancelAnimationFrame(app.recordingAnimationFrame);
                     }
-                };
-                
-                app.mediaRecorder.onstop = showPreview;
-                
-                app.mediaRecorder.onerror = e => {
-                    console.error('MediaRecorder error:', e);
-                    alert('Error al grabar video');
-                };
+                }
+            }
+        }
 
-                app.mediaRecorder.start(100);
-
-                btn.classList.add('recording');
-                indicator.classList.add('active');
-                app.recordingStart = Date.now();
-                app.recordingTimer = setInterval(updateRecTime, 1000);
-                playSound(1000, 0.2);
+        function togglePause() {
+            if (!app.mediaRecorder || app.mediaRecorder.state !== "recording") return;
+            
+            const pauseBtn = document.getElementById('pause-btn');
+            
+            if (app.isPaused) {
+                // Reanudar
+                app.mediaRecorder.resume();
+                app.isPaused = false;
+                pauseBtn.textContent = '⏸';
+                
+                // Reanudar el drawFrame si estamos en cámara frontal
+                if (app.facingMode === "user" && !app.recordingAnimationFrame) {
+                    const videoElement = document.getElementById('recorder-preview');
+                    const drawFrame = () => {
+                        if (app.mediaRecorder && app.mediaRecorder.state === "recording" && !app.isPaused) {
+                            app.recordingContext.save();
+                            app.recordingContext.scale(-1, 1);
+                            app.recordingContext.drawImage(
+                                videoElement, 
+                                -app.recordingCanvas.width, 0, 
+                                app.recordingCanvas.width, 
+                                app.recordingCanvas.height
+                            );
+                            app.recordingContext.restore();
+                        }
+                        if (app.mediaRecorder && app.mediaRecorder.state === "recording") {
+                            app.recordingAnimationFrame = requestAnimationFrame(drawFrame);
+                        }
+                    };
+                    app.recordingAnimationFrame = requestAnimationFrame(drawFrame);
+                }
+                
+                playSound(800, 0.1);
+            } else {
+                // Pausar
+                app.mediaRecorder.pause();
+                app.isPaused = true;
+                pauseBtn.textContent = '▶️';
+                playSound(600, 0.1);
+            }
+        }
+        
+        function handleZoom(direction) {
+            if (!app.videoTrack) return;
+            
+            try {
+                const capabilities = app.videoTrack.getCapabilities();
+                if (!capabilities.zoom) return;
+                
+                const step = (app.maxZoom - app.minZoom) / 10;
+                
+                if (direction === 'in') {
+                    app.currentZoom = Math.min(app.maxZoom, app.currentZoom + step);
+                } else {
+                    app.currentZoom = Math.max(app.minZoom, app.currentZoom - step);
+                }
+                
+                app.videoTrack.applyConstraints({
+                    advanced: [{ zoom: app.currentZoom }]
+                });
+                
+                playSound(700, 0.05);
+            } catch (err) {
+                console.error('Error al aplicar zoom:', err);
             }
         }
 
@@ -962,11 +1214,25 @@
                 app.stream.getTracks().forEach(t => t.stop());
                 app.stream = null;
             }
+            
+            // Desbloquear orientación
+            try {
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+            } catch (err) {
+                console.log('No se pudo desbloquear orientación');
+            }
+
+            // Liberar URL anterior si existe
+            if (app.currentVideoBlob) {
+                URL.revokeObjectURL(app.currentVideoBlob);
+            }
 
             const blob = new Blob(app.recordedChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
+            app.currentVideoBlob = URL.createObjectURL(blob);
             const previewVideo = document.getElementById('preview-video');
-            previewVideo.src = url;
+            previewVideo.src = app.currentVideoBlob;
             previewVideo.play().catch(() => {});
             showScreen('preview-screen');
         }
@@ -975,6 +1241,13 @@
             if (confirm('¿Descartar este video?')) {
                 app.recordedChunks = [];
                 document.getElementById('video-description').value = '';
+                
+                // Liberar URL del blob
+                if (app.currentVideoBlob) {
+                    URL.revokeObjectURL(app.currentVideoBlob);
+                    app.currentVideoBlob = null;
+                }
+                
                 const hasFeed = document.getElementById('feed').children.length > 0;
                 showScreen(hasFeed ? 'feed-screen' : 'empty-screen');
             }
@@ -983,23 +1256,45 @@
         function retakeVideo() {
             app.recordedChunks = [];
             document.getElementById('video-description').value = '';
+            
+            // Liberar URL del blob
+            if (app.currentVideoBlob) {
+                URL.revokeObjectURL(app.currentVideoBlob);
+                app.currentVideoBlob = null;
+            }
+            
             openCamera();
         }
 
         // PUBLISH
         async function publishVideo() {
             if (app.recordedChunks.length === 0) return;
+            
+            const desc = document.getElementById('video-description').value.trim();
+            
+            // Validar que haya descripción
+            if (!desc) {
+                alert('Por favor escribe una descripción para tu video');
+                return;
+            }
+            
+            // Validar duración mínima
+            const blob = new Blob(app.recordedChunks, { type: 'video/webm' });
+            if (blob.size < 50000) {
+                alert('El video es muy corto. Graba al menos 1 segundo.');
+                return;
+            }
 
             showScreen('loading-screen');
             playSound(1200, 0.2);
+            
             await new Promise(r => setTimeout(r, 1500));
 
-            const blob = new Blob(app.recordedChunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
-            const desc = document.getElementById('video-description').value || "¡Nuevo clip en ClipFlow! ✨";
 
             const player = document.createElement('div');
             player.className = 'video-player';
+            player.dataset.videoUrl = url;
             player.innerHTML = `
                 <video src="${url}" loop playsinline preload="auto"></video>
                 <div class="heart-pop" style="left:50%;top:50%">❤️</div>
@@ -1041,11 +1336,19 @@
             const feed = document.getElementById('feed');
             feed.prepend(player);
             document.getElementById('video-description').value = '';
+            
+            // Liberar el blob de preview
+            if (app.currentVideoBlob) {
+                URL.revokeObjectURL(app.currentVideoBlob);
+                app.currentVideoBlob = null;
+            }
 
             showScreen('feed-screen');
             feed.scrollTop = 0;
             setupVideoObserver();
-            player.querySelector('video').play().catch(() => {});
+            
+            const newVideo = player.querySelector('video');
+            newVideo.play().catch(() => {});
         }
 
         function toggleLike(btn, force = false) {
@@ -1078,7 +1381,12 @@
         }
 
         function setupVideoObserver() {
-            const observer = new IntersectionObserver(entries => {
+            // Desconectar observer anterior si existe
+            if (app.videoObserver) {
+                app.videoObserver.disconnect();
+            }
+            
+            app.videoObserver = new IntersectionObserver(entries => {
                 entries.forEach(entry => {
                     const video = entry.target.querySelector('video');
                     if (!video) return;
@@ -1092,7 +1400,7 @@
                 });
             }, { threshold: [0, 0.75, 1] });
 
-            document.querySelectorAll('.video-player').forEach(p => observer.observe(p));
+            document.querySelectorAll('.video-player').forEach(p => app.videoObserver.observe(p));
         }
 
         function scrollToTop() {
@@ -1111,6 +1419,9 @@
         document.getElementById('flip-btn').addEventListener('click', flipCamera);
         document.getElementById('flash-btn').addEventListener('click', toggleFlash);
         document.getElementById('record-btn').addEventListener('click', toggleRecord);
+        document.getElementById('pause-btn').addEventListener('click', togglePause);
+        document.getElementById('zoom-in-btn').addEventListener('click', () => handleZoom('in'));
+        document.getElementById('zoom-out-btn').addEventListener('click', () => handleZoom('out'));
         document.getElementById('discard-btn').addEventListener('click', discardVideo);
         document.getElementById('retake-btn').addEventListener('click', retakeVideo);
         document.getElementById('publish-btn').addEventListener('click', publishVideo);
@@ -1119,9 +1430,15 @@
         // Feed scroll snap
         const feed = document.getElementById('feed');
         let scrollTimer;
+        let isScrolling = false;
+        
         feed.addEventListener('scroll', () => {
+            isScrolling = true;
             clearTimeout(scrollTimer);
+            
             scrollTimer = setTimeout(() => {
+                if (!isScrolling) return;
+                
                 const players = document.querySelectorAll('.video-player');
                 let closest = null;
                 let minDist = Infinity;
@@ -1135,10 +1452,12 @@
                     }
                 });
 
-                if (closest && minDist > 50) {
+                if (closest && minDist > 100) {
                     closest.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
-            }, 100);
+                
+                isScrolling = false;
+            }, 150);
         });
 
         feed.addEventListener('click', e => {
@@ -1149,6 +1468,28 @@
                     e.target.pause();
                 }
                 playSound(600, 0.1);
+            }
+        });
+        
+        // Limpiar recursos al cerrar/recargar la página
+        window.addEventListener('beforeunload', () => {
+            if (app.stream) {
+                app.stream.getTracks().forEach(t => t.stop());
+            }
+            
+            if (app.currentVideoBlob) {
+                URL.revokeObjectURL(app.currentVideoBlob);
+            }
+            
+            document.querySelectorAll('.video-player').forEach(player => {
+                const url = player.dataset.videoUrl;
+                if (url) {
+                    URL.revokeObjectURL(url);
+                }
+            });
+            
+            if (app.videoObserver) {
+                app.videoObserver.disconnect();
             }
         });
     </script>
